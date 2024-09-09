@@ -1,3 +1,13 @@
+import os
+import sys
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+# 将 project_root 添加到 PYTHONPATH（sys.path）
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+
 import argparse, os, sys, glob
 import torch
 import time
@@ -30,10 +40,19 @@ def sample_classconditional(model, batch_size, class_label, steps=256, temperatu
     index_sample = sample_with_past(c_indices, model.transformer, steps=steps,
                                     sample_logits=True, top_k=top_k, callback=callback,
                                     temperature=temperature, top_p=top_p)
+
+
     if verbose_time:
         sampling_time = time.time() - t1
         print(f"Full sampling takes about {sampling_time:.2f} seconds.")
     x_sample = model.decode_to_img(index_sample, qzshape)
+
+    index = model.permuter(index_sample, reverse=True)
+    bhwc = (qzshape[0],qzshape[2],qzshape[3],qzshape[1])
+    quant_z = model.first_stage_model.quantize.get_codebook_entry(
+        index.reshape(-1), shape=bhwc)
+    
+    print(f"quant_z shape is {quant_z.shape}")
     log["samples"] = x_sample
     log["class_label"] = c_indices
     return log
@@ -248,9 +267,9 @@ if __name__ == "__main__":
         assert not cls_str.endswith(","), 'class string should not end with a ","'
         given_classes = [int(c) for c in cls_str.split(",")]
 
-    logdir = os.path.join(logdir, "samples", f"top_k_{opt.top_k}_temp_{opt.temperature:.2f}_top_p_{opt.top_p}",
-                          f"{global_step}")
-
+    # logdir = os.path.join(logdir, "samples", f"top_k_{opt.top_k}_temp_{opt.temperature:.2f}_top_p_{opt.top_p}",
+                        #   f"{global_step}")
+    logdir = os.path.join(logdir, f"top_k_{opt.top_k}_temp_{opt.temperature:.2f}_top_p_{opt.top_p}")
     print(f"Logging to {logdir}")
     os.makedirs(logdir, exist_ok=True)
 

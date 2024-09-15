@@ -10,7 +10,8 @@ from datetime import datetime
 import argparse
 
 def train_model(train_loader, val_loader, num_classes, num_epochs, learning_rate, step_size, gamma, model_choice):
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    print(f"device is {device}")
 
     if model_choice == 1:
         model = ClassificationNet1(num_classes).to(device)
@@ -112,13 +113,13 @@ if __name__ == "__main__":
 
     train_csv = 'train_embeddings.csv'
     val_csv = 'validation_embeddings.csv'
-    data_folder = '/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/datasets/VQGAN_16384_generated_new'
+    data_folder = '/data/ty45972/taming-transformers/codebook_explanation_classification/datasets/VQGAN_16384_generated_new'
     batch_size = 512
     num_classes = 1000  # Adjust according to the actual number of classes
     num_epochs = 80
     learning_rate = 0.001
     step_size = 20  # Decay learning rate every step_size epochs
-    gamma = 0.1  # Multiply learning rate by gamma at each stepßß
+    gamma = 0.1  # Multiply learning rate by gamma at each stepß
 
     train_loader, val_loader = get_train_val_dataloaders(train_csv, val_csv, data_folder, batch_size)
     train_model(train_loader, val_loader, num_classes, num_epochs, learning_rate, step_size, gamma, args.model)

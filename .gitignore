@@ -13,4 +13,6 @@
 /codebook_explanation_concept/datasets
 /codebook_explanation_concept/logs
 /codebook_explanation_concept/checkpoints
-/codebook_explanation_concept/error_log.logxsw
+/codebook_explanation_concept/error_log.log
+/codebook_explanation_classification/results/Explanation/visualization_results
+/codebook_explanation_classification/explanation_evaluation/evaluation_results

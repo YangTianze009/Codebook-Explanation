@@ -1,3 +1,8 @@
+'''
+This code is used to generate statistics information based on token activation value. Such as which token has the largest activation value and how many times it occurs in specific label
+'''
+
+
 import csv
 import os
 import numpy as np
@@ -112,7 +117,7 @@ def process_csv_files(folder_path, save_root, token_indices_dict, top_n_list=[1,
                     writer.writerow([f"Top {n} Tokens"])
                     writer.writerow(["Token", "Frequency", "Files"])
 
-                    top_tokens = sorted(label_token_statistics[n].items(), key=lambda x: x[1]["count"], reverse=True)[:50]
+                    top_tokens = sorted(label_token_statistics[n].items(), key=lambda x: x[1]["count"], reverse=True)[:100]
                     for token, data in top_tokens:
                         files_str = "; ".join(data["files"])  # 将文件名合并成字符串
                         writer.writerow([token, data["count"], files_str])
@@ -127,7 +132,7 @@ def process_csv_files(folder_path, save_root, token_indices_dict, top_n_list=[1,
 
         for n in top_n_list:
             writer.writerow([f"Top {n} Tokens"])
-            top_tokens = sorted(overall_token_statistics[n].items(), key=lambda x: x[1]["count"], reverse=True)[:50]
+            top_tokens = sorted(overall_token_statistics[n].items(), key=lambda x: x[1]["count"], reverse=True)[:100]
             for token, data in top_tokens:
                 files_str = "; ".join(data["files"])
                 writer.writerow([token, data["count"], files_str])

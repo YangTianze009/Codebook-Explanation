@@ -70,10 +70,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     test_csv = 'test_embeddings.csv'
-    data_folder = '/data/ty45972/taming-transformers/codebook_explanation_classification/datasets/VQGAN_16384_generated_new'
+    data_folder = '/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/datasets/VQGAN_16384_generated_new'
     batch_size = 64
     num_classes = 1000  # Adjust according to the actual number of classes
-    model_path = f"/data/ty45972/taming-transformers/codebook_explanation_classification/checkpoints/generated_data/ClassificationNet{args.model}/best_model.pth"
+    model_path = f"/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/checkpoints/generated_data/ClassificationNet{args.model}/best_model.pth"
 
     device = torch.device(f'cuda:{args.gpu}' if torch.cuda.is_available() else 'cpu')
     torch.cuda.set_device(device)

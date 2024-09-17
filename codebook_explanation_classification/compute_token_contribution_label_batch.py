@@ -123,7 +123,7 @@ if __name__ == "__main__":
         data_folder = '/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/datasets/VQGAN_16384_generated_new'
     elif args.data == "original":
         data_folder = '/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/datasets/VQGAN_16384_original'
-    batch_size = 20
+    batch_size = 25
     model_path = f"/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/checkpoints/{args.data}_data/ClassificationNet{args.model}/best_model.pth"
     results_dir = f"results/Explanation/{args.data}_data/label/Net{args.model}/label_activation_results"
     os.makedirs(results_dir, exist_ok=True)

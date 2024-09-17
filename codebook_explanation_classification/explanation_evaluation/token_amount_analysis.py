@@ -64,7 +64,7 @@ def main(args):
 
     # Prepare output CSV
     output_csv = "token_amount_analysis.csv"
-    evaluation_result_path = "evaluation_results/"
+    evaluation_result_path = f"evaluation_results/saliency/{args.model}"
     os.makedirs(evaluation_result_path, exist_ok=True)
     
     with open(os.path.join(evaluation_result_path, output_csv), 'w', newline='') as csvfile:
@@ -88,7 +88,7 @@ def main(args):
                     if token_list is None:
                         continue
 
-                    csv_path = f"/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/results/Explanation/generated_data/label/Net1/label_activation_statistics/label_{label}.csv"
+                    csv_path = f"/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/results/Explanation/generated_data/label/Net{args.model}/label_activation_statistics/label_{label}.csv"
                     baseline_path = f"/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/results/Explanation/baseline_statistics/label_{label}.csv"
 
                     # Load tokens
@@ -117,6 +117,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Token amount analysis for different top_n and token_num combinations.")
     parser.add_argument('--gpu', type=int, default=None, help="Specify GPU to use (e.g., 0 or 1). If not specified, will use any available GPU or CPU.")
+    parser.add_argument('--model', type=int, choices=[1, 2, 3], required=True, help='Classification model to use')
     args = parser.parse_args()
     
     main(args)

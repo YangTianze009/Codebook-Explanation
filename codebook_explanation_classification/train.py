@@ -4,7 +4,7 @@ import torch.optim as optim
 from torch.nn import CrossEntropyLoss
 from torch.optim.lr_scheduler import StepLR
 from dataset import get_train_val_dataloaders
-from model import ClassificationNet1, ClassificationNet2, ClassificationNet3
+from model import ClassificationNet1, ClassificationNet2, ClassificationNet3, ClassificationNet4
 from tqdm import tqdm
 from datetime import datetime
 import argparse
@@ -22,6 +22,9 @@ def train_model(train_loader, val_loader, num_classes, num_epochs, learning_rate
     elif model_choice == 3:
         model = ClassificationNet3(num_classes=1000).to(device)
         model_name = 'ClassificationNet3'
+    elif model_choice == 4:
+        model = ClassificationNet4(num_classes=1000).to(device)
+        model_name = 'ClassificationNet4'
     else:
         raise ValueError("Invalid model choice. Choose either 1 or 2 or 3.")
 
@@ -105,7 +108,7 @@ def train_model(train_loader, val_loader, num_classes, num_epochs, learning_rate
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a classification model.')
-    parser.add_argument('--model', type=int, choices=[1, 2, 3], required=True,
+    parser.add_argument('--model', type=int, choices=[1, 2, 3, 4], required=True,
                         help='Choose which model to train: 1 for ClassificationNet1 or 2 for ClassificationNet2 or 3 for ClassificationNet3')
     parser.add_argument('--data_type', type=str, choices=["generated", "original"], default="generated",
                         help='Choose which imagenet data to be used')
@@ -114,7 +117,7 @@ if __name__ == "__main__":
     train_csv = 'train_embeddings.csv'
     val_csv = 'validation_embeddings.csv'
     data_folder = '/data/ty45972/taming-transformers/codebook_explanation_classification/datasets/VQGAN_16384_generated_new'
-    batch_size = 512
+    batch_size = 256
     num_classes = 1000  # Adjust according to the actual number of classes
     num_epochs = 80
     learning_rate = 0.001

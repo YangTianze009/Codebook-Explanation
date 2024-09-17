@@ -5,6 +5,7 @@
 /codebook_explanation_classification/results/Classification
 /codebook_explanation_classification/results/Explanation/generated_data
 /codebook_explanation_classification/results/Explanation/original_data
+/codebook_explanation_classification/results/Explanation/baseline_statistics
 /codebook_explanation_classification/feature_visualization_map
 /datasets
 /logs
@@ -16,3 +17,4 @@
 /codebook_explanation_concept/error_log.log
 /codebook_explanation_classification/results/Explanation/visualization_results
 /codebook_explanation_classification/explanation_evaluation/evaluation_results
+/codebook_explanation_classification/explanation_evaluation/outputs

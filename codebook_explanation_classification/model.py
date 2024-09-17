@@ -203,6 +203,11 @@ class ClassificationNet3(nn.Module):
         return x
 
 
+import torch
+from torch import nn
+import math
+
+# 首先，我们需要定义 TransformerEncoderLayer 和 ClassificationNet4 类
 class TransformerEncoderLayer(nn.Module):
     def __init__(self, embed_dim, num_heads, mlp_dim, dropout=0.1):
         super(TransformerEncoderLayer, self).__init__()
@@ -219,12 +224,10 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        # 自注意力机制
         attn_output, _ = self.self_attn(x, x, x)
         x = x + self.dropout(attn_output)
         x = self.norm1(x)
 
-        # 前馈神经网络
         mlp_output = self.mlp(x)
         x = x + self.dropout(mlp_output)
         x = self.norm2(x)
@@ -232,24 +235,39 @@ class TransformerEncoderLayer(nn.Module):
         return x
 
 class ClassificationNet4(nn.Module):
-    def __init__(self, embed_dim=256, num_heads=8, mlp_dim=1024, num_layers=3, num_classes=1000):
+    def __init__(self, num_classes, embed_dim=512, num_heads=8, mlp_dim=2048, num_layers=6, dropout=0.1):
         super(ClassificationNet4, self).__init__()
-        
+
+        self.embed_dim = embed_dim
+        self.num_patches = 16 * 16  # 输入已经是16x16个patch，每个patch的维度是256
+
+        # 投影层：将256维的patch映射到embed_dim维
+        self.proj = nn.Linear(256, embed_dim)
+
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        num_patches = 16 * 16  # 输入已经是16x16个patch，每个patch的维度是256
-        self.pos_embed = self._build_sinusoidal_embeddings(num_patches + 1, embed_dim)  # 使用正弦-余弦位置编码
+        self.pos_embed = self._build_sinusoidal_embeddings(self.num_patches + 1, embed_dim)
+
+        self.dropout = nn.Dropout(dropout)
 
         # 创建多个Transformer编码层
         self.encoder = nn.ModuleList([
-            TransformerEncoderLayer(embed_dim, num_heads, mlp_dim)
+            TransformerEncoderLayer(embed_dim, num_heads, mlp_dim, dropout)
             for _ in range(num_layers)
         ])
 
         self.norm = nn.LayerNorm(embed_dim)
-        self.fc = nn.Linear(65792, num_classes)
+        
+        # 添加一个额外的MLP层
+        self.pre_classifier = nn.Sequential(
+            nn.Linear(embed_dim, embed_dim * 2),
+            nn.LayerNorm(embed_dim * 2),
+            nn.GELU(),
+            nn.Dropout(dropout)
+        )
+        
+        self.fc = nn.Linear(embed_dim * 2, num_classes)
 
     def _build_sinusoidal_embeddings(self, num_positions, embed_dim):
-        """构建正弦-余弦位置编码"""
         position = torch.arange(0, num_positions, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, embed_dim, 2).float() * (-math.log(10000.0) / embed_dim))
         pe = torch.zeros(num_positions, embed_dim)
@@ -259,33 +277,42 @@ class ClassificationNet4(nn.Module):
         return pe
 
     def forward(self, x):
-        # 输入展平后，每个patch的维度是256，patch数目是16*16
-        x = x.flatten(2).transpose(1, 2)  # [batch_size, num_patches, embed_dim]
-        # print("x", x.shape)
-
-        # Add class token and position embedding
+        # x shape: [batch_size, 256, 16, 16]
         batch_size = x.size(0)
-        cls_tokens = self.cls_token.expand(batch_size, -1, -1)  # [batch_size, 1, embed_dim]
-        x = torch.cat((cls_tokens, x), dim=1)  # [batch_size, num_patches + 1, embed_dim]
-        x = x + self.pos_embed[:, :x.size(1), :].to(x.device)  # [batch_size, num_patches + 1, embed_dim]
-        # Transformer encoder
+        
+        # 重塑并转置输入
+        x = x.reshape(batch_size, 256, -1).transpose(1, 2)  # [batch_size, 256, embed_dim]
+        
+        # 投影到更高的维度
+        x = self.proj(x)  # [batch_size, 256, embed_dim]
+
+        # 添加分类token和位置编码
+        cls_tokens = self.cls_token.expand(batch_size, -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)
+        x = x + self.pos_embed[:, :x.size(1), :].to(x.device)
+
+        x = self.dropout(x)
+
+        # Transformer编码器
         for layer in self.encoder:
             x = layer(x)
 
-        # Classification head
+        # 取出CLS Token
         x = self.norm(x)
-        # print("x", x.shape)
-        cls_token_final = x.flatten(1)
-        #cls_token_final = x[:, 0]  # 取出CLS Token
-        # print("cls_token_final", cls_token_final.shape)
-        x = self.fc(cls_token_final)  # [batch_size, num_classes]
+        cls_token_final = x[:, 0]
+
+        # 通过额外的MLP层
+        x = self.pre_classifier(cls_token_final)
+        
+        # 分类头
+        x = self.fc(x)
 
         return x
 
 
 
 if __name__ == "__main__":
-    model = ClassificationNet3(1000)
+    model = ClassificationNet4(1000)
     print("model", model)
     input_tensor = torch.randn(32, 256, 16, 16)
     output = model(input_tensor)

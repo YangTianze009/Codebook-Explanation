@@ -117,19 +117,20 @@ if __name__ == "__main__":
     selected_labels = list(range(1000))
     print(f"Selected labels: {selected_labels}")
 
-    test_csv = 'train_embeddings.csv'
+    test_csv = 'test_embeddings.csv'
     val_csv = 'validation_embeddings.csv'
     if args.data == "generated":
         data_folder = '/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/datasets/VQGAN_16384_generated_new'
     elif args.data == "original":
         data_folder = '/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/datasets/VQGAN_16384_original'
-    batch_size = 25
+    batch_size = 20
     model_path = f"/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/checkpoints/{args.data}_data/ClassificationNet{args.model}/best_model.pth"
-    results_dir = f"results/Explanation/{args.data}_data/label/Net{args.model}/label_activation_results"
+    results_dir = f"results/Explanation/{args.data}_data/label/Net{args.model}/label_activation_results_test"
     os.makedirs(results_dir, exist_ok=True)
 
     device = torch.device(f'cuda:{args.gpu}' if torch.cuda.is_available() else 'cpu')
     torch.cuda.set_device(device)
 
-    test_loader, val_loader = get_train_val_dataloaders(test_csv, val_csv, data_folder, batch_size, shuffle=False)
+    # test_loader, val_loader = get_train_val_dataloaders(test_csv, val_csv, data_folder, batch_size, shuffle=False)
+    test_loader = get_test_dataloader(test_csv, data_folder, batch_size)
     compute_contribution(test_loader, model_path, device, results_dir, selected_labels)

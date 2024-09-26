@@ -50,15 +50,18 @@ def preprocess_image(image, preprocess):
     input_batch = input_tensor.unsqueeze(0)
     return input_batch
 
-def calculate_accuracy(model, image, true_label, token_list, target_token_list, baseline_token_list, grid_size, device, preprocess):
+def calculate_accuracy(models, image, true_label, token_list, target_token_list, baseline_token_list, grid_size, device, preprocess):
+    results = {model_name: {'original': False, 'our_masked': False, 'baseline_masked': False} for model_name in models}
+    
     # Original image prediction
     input_batch = preprocess_image(image, preprocess).to(device)
     with torch.no_grad():
-        original_output = model(input_batch)
-    original_pred = original_output.argmax(dim=1).item()
-    original_correct = (original_pred == true_label)
+        for model_name, model in models.items():
+            original_output = model(input_batch)
+            original_pred = original_output.argmax(dim=1).item()
+            results[model_name]['original'] = (original_pred == true_label)
 
-    # Function to create masked image
+    # Create masked images
     def create_masked_image(token_list_to_mask):
         masked_image = image.copy()
         image_size = masked_image.size[0]
@@ -74,47 +77,43 @@ def calculate_accuracy(model, image, true_label, token_list, target_token_list, 
                         pixels[col * patch_size + i, row * patch_size + j] = (0, 0, 0)
         return masked_image
 
-    # Our method masked image prediction
     our_masked_image = create_masked_image(target_token_list)
+    baseline_masked_image = create_masked_image(baseline_token_list)
+
+    # Our method masked image prediction
     our_masked_batch = preprocess_image(our_masked_image, preprocess).to(device)
     with torch.no_grad():
-        our_masked_output = model(our_masked_batch)
-    our_masked_pred = our_masked_output.argmax(dim=1).item()
-    our_masked_correct = (our_masked_pred == true_label)
+        for model_name, model in models.items():
+            our_masked_output = model(our_masked_batch)
+            our_masked_pred = our_masked_output.argmax(dim=1).item()
+            results[model_name]['our_masked'] = (our_masked_pred == true_label)
 
     # Baseline method masked image prediction
-    baseline_masked_image = create_masked_image(baseline_token_list)
     baseline_masked_batch = preprocess_image(baseline_masked_image, preprocess).to(device)
     with torch.no_grad():
-        baseline_masked_output = model(baseline_masked_batch)
-    baseline_masked_pred = baseline_masked_output.argmax(dim=1).item()
-    baseline_masked_correct = (baseline_masked_pred == true_label)
+        for model_name, model in models.items():
+            baseline_masked_output = model(baseline_masked_batch)
+            baseline_masked_pred = baseline_masked_output.argmax(dim=1).item()
+            results[model_name]['baseline_masked'] = (baseline_masked_pred == true_label)
 
-    return original_correct, our_masked_correct, baseline_masked_correct
+    return results
 
 def main(args):
-    # Set up the model
-    if args.model == 'vit_b_16':
-        model = torchvision.models.vit_b_16(pretrained=True)
-    elif args.model == 'vit_b_32':
-        model = torchvision.models.vit_b_32(pretrained=True)
-    elif args.model == 'resnet18':
-        model = torchvision.models.resnet18(pretrained=True)
-    elif args.model == 'resnet50':
-        model = torchvision.models.resnet50(pretrained=True)
-    else:
-        raise ValueError("Invalid model name")
-
-    model.eval()
+    # Set up all models
+    models = {
+        'vit_b_16': torchvision.models.vit_b_16(pretrained=True),
+        'vit_b_32': torchvision.models.vit_b_32(pretrained=True),
+        'resnet18': torchvision.models.resnet18(pretrained=True),
+        'resnet50': torchvision.models.resnet50(pretrained=True)
+    }
 
     # Set up device
-    if args.gpu is not None:
-        device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    model.to(device)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+
+    for model in models.values():
+        model.eval()
+        model.to(device)
 
     # Define image preprocessing
     preprocess = transforms.Compose([
@@ -142,21 +141,19 @@ def main(args):
             label_to_files[label].append(filename)
 
     # Prepare output CSV
-    output_csv = f"accuracy_comparison_{args.model}_top{args.top_n}_token{args.token_num}.csv"
-    evaluation_result_path = "evaluation_results/"
+    output_csv = f"accuracy_comparison_top{args.top_n}_token{args.token_num}.csv"
+    evaluation_result_path = f"evaluation_results/saliency/model_{args.model}/"
     os.makedirs(evaluation_result_path, exist_ok=True)
     with open(evaluation_result_path + output_csv, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['Model', 'Top N', 'Token Num', 'Original Accuracy', 'Our Masked Accuracy', 'Baseline Masked Accuracy'])
 
-        total_original_correct = 0
-        total_our_masked_correct = 0
-        total_baseline_masked_correct = 0
+        total_results = {model_name: {'original': 0, 'our_masked': 0, 'baseline_masked': 0} for model_name in models}
         total_count = 0
 
         # Main loop for processing all labels
         for target_label in tqdm(range(1000), desc="Processing labels"):
-            csv_path = f"/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/results/Explanation/generated_data/label/Net1/label_activation_statistics/label_{target_label}.csv"
+            csv_path = f"/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/results/Explanation/generated_data/label/Net{args.model}/label_activation_statistics/label_{target_label}.csv"
             baseline_path = f"/data2/ty45972_data2/taming-transformers/codebook_explanation_classification/results/Explanation/baseline_statistics/label_{target_label}.csv"
 
             # Load tokens
@@ -180,36 +177,50 @@ def main(args):
                 if token_list is None:
                     continue
                 
-                original_correct, our_masked_correct, baseline_masked_correct = calculate_accuracy(
-                    model, image, target_label, token_list, target_token_list, baseline_token_list, 16, device, preprocess
+                results = calculate_accuracy(
+                    models, image, target_label, token_list, target_token_list, baseline_token_list, 16, device, preprocess
                 )
                 
-                total_original_correct += int(original_correct)
-                total_our_masked_correct += int(our_masked_correct)
-                total_baseline_masked_correct += int(baseline_masked_correct)
+                for model_name, model_results in results.items():
+                    total_results[model_name]['original'] += int(model_results['original'])
+                    total_results[model_name]['our_masked'] += int(model_results['our_masked'])
+                    total_results[model_name]['baseline_masked'] += int(model_results['baseline_masked'])
                 total_count += 1
 
-        # Calculate and add overall accuracy
+        # Calculate and add overall accuracy for each model
         if total_count > 0:
-            original_accuracy = total_original_correct / total_count
-            our_masked_accuracy = total_our_masked_correct / total_count
-            baseline_masked_accuracy = total_baseline_masked_correct / total_count
-            
-            writer.writerow([args.model, args.top_n, args.token_num, original_accuracy, our_masked_accuracy, baseline_masked_accuracy])
-            
-            print(f"Model: {args.model}")
-            print(f"Top N: {args.top_n}")
-            print(f"Token Num: {args.token_num}")
-            print(f"Original accuracy: {original_accuracy}")
-            print(f"Our masked accuracy: {our_masked_accuracy}")
-            print(f"Baseline masked accuracy: {baseline_masked_accuracy}")
+            for model_name, model_results in total_results.items():
+                original_accuracy = model_results['original'] / total_count
+                our_masked_accuracy = model_results['our_masked'] / total_count
+                baseline_masked_accuracy = model_results['baseline_masked'] / total_count
+                
+                writer.writerow([model_name, args.top_n, args.token_num, original_accuracy, our_masked_accuracy, baseline_masked_accuracy])
+                
+                print(f"Model: {model_name}")
+                print(f"Top N: {args.top_n}")
+                print(f"Token Num: {args.token_num}")
+                print(f"Original accuracy: {original_accuracy}")
+                print(f"Our masked accuracy: {our_masked_accuracy}")
+                print(f"Baseline masked accuracy: {baseline_masked_accuracy}")
+                print()
+
+            # Calculate and add average accuracy across all models
+            avg_original_accuracy = sum(model_results['original'] for model_results in total_results.values()) / (total_count * len(models))
+            avg_our_masked_accuracy = sum(model_results['our_masked'] for model_results in total_results.values()) / (total_count * len(models))
+            avg_baseline_masked_accuracy = sum(model_results['baseline_masked'] for model_results in total_results.values()) / (total_count * len(models))
+
+            writer.writerow(['Average', args.top_n, args.token_num, avg_original_accuracy, avg_our_masked_accuracy, avg_baseline_masked_accuracy])
+
+            print("Average across all models:")
+            print(f"Original accuracy: {avg_original_accuracy}")
+            print(f"Our masked accuracy: {avg_our_masked_accuracy}")
+            print(f"Baseline masked accuracy: {avg_baseline_masked_accuracy}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Accuracy comparison for different models and token settings.")
-    parser.add_argument('--model', type=str, required=True, choices=['vit_b_16', 'vit_b_32', 'resnet18', 'resnet50'], help="Model to use for comparison")
     parser.add_argument('--top_n', type=int, required=True, help="Top N tokens to consider")
     parser.add_argument('--token_num', type=int, required=True, help="Number of tokens to use")
-    parser.add_argument('--gpu', type=int, default=None, help="Specify GPU to use (e.g., 0 or 1). If not specified, will use any available GPU or CPU.")
+    parser.add_argument('--model', type=int, choices=[1, 2, 3], required=True, help='Classification model to use')
     args = parser.parse_args()
     
     main(args)

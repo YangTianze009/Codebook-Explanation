@@ -64,7 +64,7 @@ def main(args):
 
     # Prepare output CSV
     output_csv = "token_amount_analysis.csv"
-    evaluation_result_path = f"evaluation_results/saliency/{args.model}"
+    evaluation_result_path = f"evaluation_results/saliency/model_{args.model}"
     os.makedirs(evaluation_result_path, exist_ok=True)
     
     with open(os.path.join(evaluation_result_path, output_csv), 'w', newline='') as csvfile:

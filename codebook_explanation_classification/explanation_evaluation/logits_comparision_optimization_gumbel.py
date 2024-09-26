@@ -34,6 +34,7 @@ parser = argparse.ArgumentParser(description='Optimize images for maximum label 
 parser.add_argument('--gpu', type=int, default=0, help='GPU ID to use')
 parser.add_argument('--model', type=int, choices=[1, 2, 3], required=True, help='Classification model to use')
 parser.add_argument('--steps', type=int, required=False, default=10000, help='Number of optimization steps')
+parser.add_argument('--lr', type=float, required=False, default=0.01, help='Number of optimization steps')
 args = parser.parse_args()
 
 def chw_to_pillow(x):
@@ -138,7 +139,7 @@ def gumbel_softmax(logits, temperature, device='cpu', hard=True):
         y = (y_hard - y).detach() + y
     return y, max_idx.squeeze(-1)
 
-def generate_max_activation_image(model, target_label, device, P, mask, codebook, VQ_model, pretrained_models, initial_label, initial_tokens, num_steps=args.steps, lr=0.1, reg=0, temperature=1.0):
+def generate_max_activation_image(model, target_label, device, P, mask, codebook, VQ_model, pretrained_models, initial_label, initial_tokens, num_steps=args.steps, lr=args.lr, reg=0, temperature=1.0):
     P = P.to(device)
     P.requires_grad_(True)
     mask = mask.to(device)
@@ -277,9 +278,9 @@ def main(args):
     with open(pkl_path, 'rb') as f:
         token_dict = pickle.load(f)
 
-    output_base_path = f"evaluation_results/optimization/{args.model}"
+    output_base_path = f"evaluation_results/optimization/model_{args.model}/"
     os.makedirs(output_base_path, exist_ok=True)
-    output_file = output_base_path + 'optimization_results_token_selection.csv'
+    output_file = output_base_path + f'optimization_results_token_selection_{args.steps}_{args.lr}.csv'
     fieldnames = ['initial_label', 'target_label'] + \
                  [f'{model}_original_change' for model in pretrained_models] + \
                  [f'{model}_target_change' for model in pretrained_models] + \

@@ -48,7 +48,7 @@ def gumbel_softmax(logits, temperature, device='cpu', hard=True):
         y = (y_hard - y).detach() + y  # 通过Straight-Through技巧保留梯度
     return y, max_idx.squeeze(-1)  # 返回选择的one-hot矩阵和索引
 
-def generate_max_activation_image(model, target_label, device, codebook, num_steps=20000, lr=0.01, reg=0, temperature=1.0):
+def generate_max_activation_image(model, target_label, device, codebook, num_steps=5000, lr=0.1, reg=0, temperature=1.0):
     # 初始化P矩阵, P的形状为 (256, 16384)，每行表示从codebook中选择token的概率分布
     P = torch.randn(256, 16384, device=device, requires_grad=True)
     

@@ -30,6 +30,7 @@ parser = argparse.ArgumentParser(description='Optimize images for maximum label 
 parser.add_argument('--gpu', type=int, default=0, help='GPU ID to use')
 parser.add_argument('--model', type=int, choices=[1, 2, 3], required=True, help='Classification model to use')
 parser.add_argument('--steps', type=int, required=False, default=10000, help='Number of optimization steps')
+parser.add_argument('--lr', type=float, required=False, default=0.01, help='Number of optimization steps')
 args = parser.parse_args()
 
 def rescale(x):
@@ -118,7 +119,7 @@ def create_mask(shape, top_left, bottom_right):
     mask[:, :, top_left[0]:bottom_right[0]+1, top_left[1]:bottom_right[1]+1] = 1
     return mask
 
-def generate_max_activation_image(model, target_label, device, initial_embedding, mask, VQ_model, pretrained_models, initial_label, num_steps=args.steps, lr=0.1, reg=0):
+def generate_max_activation_image(model, target_label, device, initial_embedding, mask, VQ_model, pretrained_models, initial_label, num_steps=args.steps, lr=args.lr, reg=0):
     input_embedding = initial_embedding.clone().detach().requires_grad_(True).to(device)
     mask = mask.to(device)
 
@@ -238,9 +239,9 @@ def main(args):
     with open(pkl_path, 'rb') as f:
         token_dict = pickle.load(f)
 
-    output_base_path = f"evaluation_results/optimization/model_{args.model}"
+    output_base_path = f"evaluation_results/optimization/model_{args.model}/"
     os.makedirs(output_base_path, exist_ok=True)
-    output_file = output_base_path + 'optimization_results_embedding.csv'
+    output_file = output_base_path + f'optimization_results_embedding_{args.steps}_{args.lr}.csv'
     fieldnames = ['initial_label', 'target_label'] + \
                  [f'{model}_{metric}' for model in pretrained_models for metric in ['original_change', 'target_change', 'best_step']]
 
